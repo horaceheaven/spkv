@@ -4,6 +4,8 @@ import (
 	"github.com/boltdb/bolt"
 	"errors"
 	"time"
+	"bytes"
+	"encoding/gob"
 )
 
 type KVStore struct {
@@ -36,4 +38,50 @@ func Open(path string) (*KVStore, error) {
 			return &KVStore{db: db}, nil
 		}
 	}
+}
+
+func (kvs *KVStore) Put(key string, value interface{}) error {
+	if value == nil {
+		return ErrBadValue
+	}
+
+	var buf bytes.Buffer
+
+	if err := gob.NewEncoder(&buf).Encode(value); err != nil {
+		return nil
+	}
+
+	return kvs.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bucketName).Put([]byte(key), buf.Bytes())
+	})
+}
+
+func (kvs *KVStore) Get(key string, value interface{}) error {
+	return kvs.db.View(func(tx *bolt.Tx) error {
+		cursor := tx.Bucket(bucketName).Cursor()
+
+		if k, v := cursor.Seek([]byte(key)); k == nil || string(k) != key {
+			return ErrNotFound
+		} else if value == nil {
+			return nil
+		} else {
+			decoder := gob.NewDecoder(bytes.NewReader(v))
+			return decoder.Decode(value)
+		}
+	})
+}
+
+func (kvs *KVStore) Delete(key string) error {
+	return kvs.db.Update(func(tx *bolt.Tx) error {
+		cursor := tx.Bucket(bucketName).Cursor()
+		if k, _ := cursor.Seek([]byte(key)); k == nil || string(k) != key {
+			return ErrNotFound
+		} else {
+			return cursor.Delete()
+		}
+	})
+}
+
+func (kvs *KVStore) Close() error {
+	return kvs.db.Close()
 }
