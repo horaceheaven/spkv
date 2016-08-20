@@ -1,5 +1,0 @@
-package spkv
-
-func main() {
-
-}
