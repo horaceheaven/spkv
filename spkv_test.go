@@ -3,17 +3,16 @@ package spkv
 import (
 	"testing"
 	"os"
+	"fmt"
 )
 
 var (
 	testDBName = "spkv-test.db"
+	benchMarkDBName = "spkv-bench.db"
 )
 
-func TestSPKVStore_Setup(t *testing.T) {
-	os.Remove(testDBName)
-}
-
 func TestSPKVStore_Suite(t *testing.T) {
+	os.Remove(testDBName)
 	store, err := Open(testDBName)
 
 	if (err != nil) {
@@ -33,8 +32,27 @@ func TestSPKVStore_Suite(t *testing.T) {
 	}
 
 	store.Close()
+
+	os.Remove(testDBName)
 }
 
-func TestSPKVStore_TearDown(t *testing.T) {
-	os.Remove(testDBName)
+func BenchmarkKVStore_Put(b *testing.B) {
+	os.Remove(benchMarkDBName)
+	store, err := Open(benchMarkDBName)
+
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := store.Put(fmt.Sprintf("key%d", i), "somevalue"); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	b.StopTimer()
+	store.Close()
+	os.Remove(benchMarkDBName)
 }
