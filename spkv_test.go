@@ -1,21 +1,27 @@
 package spkv
 
 import (
-	"testing"
-	"os"
 	"fmt"
+	"os"
+	"testing"
 )
 
 var (
-	testDBName = "spkv-test.db"
+	testDBName      = "spkv-test.db"
 	benchMarkDBName = "spkv-bench.db"
 )
 
 func TestSPKVStore_Suite(t *testing.T) {
 	os.Remove(testDBName)
-	store, err := Open(testDBName)
 
-	if (err != nil) {
+	options := Opts{
+		Path:    testDBName,
+		Debug:   true,
+	}
+
+	store, err := Open(options)
+
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -38,7 +44,13 @@ func TestSPKVStore_Suite(t *testing.T) {
 
 func BenchmarkSPKVStore_Put(b *testing.B) {
 	os.Remove(benchMarkDBName)
-	store, err := Open(benchMarkDBName)
+
+	options := Opts{
+		Path:    testDBName,
+		Debug:   true,
+	}
+
+	store, err := Open(options)
 
 	if err != nil {
 		b.Fatal(err)

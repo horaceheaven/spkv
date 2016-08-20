@@ -1,11 +1,14 @@
 package spkv
 
 import (
-	"github.com/boltdb/bolt"
-	"errors"
-	"time"
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"github.com/boltdb/bolt"
+	"io/ioutil"
+	"log"
+	"os"
+	"time"
 )
 
 type KVStore struct {
@@ -19,12 +22,51 @@ var (
 	bucketName = []byte("kv")
 )
 
-func Open(path string) (*KVStore, error) {
-	opts := &bolt.Options{
-		Timeout: 50 * time.Millisecond,
+const (
+	logPrefix       = "spkv "
+	DefaultTimeout  = 50 * time.Millisecond
+	DefaultPath     = "spkv.db"
+	DefaultFileMode = 0640
+)
+
+type Opts struct {
+	Timeout  time.Duration
+	Path     string
+	FileMode os.FileMode
+	Debug    bool
+}
+
+func Open(options Opts) (*KVStore, error) {
+	timeOut := options.Timeout
+	path := options.Path
+	fileMode := options.FileMode
+
+	log.SetPrefix(logPrefix)
+
+	if !options.Debug {
+		log.SetOutput(ioutil.Discard)
 	}
 
-	if db, err := bolt.Open(path, 0640, opts); err != nil {
+	if options.Timeout <= 0 {
+		timeOut = DefaultTimeout
+		log.Print("using defult timeout of ", DefaultTimeout)
+	}
+
+	if options.Path == "" {
+		path = DefaultPath
+		log.Print("using default path of ", DefaultPath)
+	}
+
+	if options.FileMode <= 0 {
+		fileMode = DefaultFileMode
+		log.Printf("using default default file mode of %o", DefaultFileMode)
+	}
+
+	opts := &bolt.Options{
+		Timeout: timeOut,
+	}
+
+	if db, err := bolt.Open(path, fileMode, opts); err != nil {
 		return nil, err
 	} else {
 		err := db.Update(func(tx *bolt.Tx) error {
