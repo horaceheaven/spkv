@@ -36,7 +36,7 @@ func TestSPKVStore_Suite(t *testing.T) {
 	os.Remove(testDBName)
 }
 
-func BenchmarkKVStore_Put(b *testing.B) {
+func BenchmarkSPKVStore_Put(b *testing.B) {
 	os.Remove(benchMarkDBName)
 	store, err := Open(benchMarkDBName)
 
