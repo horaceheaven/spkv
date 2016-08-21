@@ -66,18 +66,21 @@ func Open(options Opts) (*KVStore, error) {
 		Timeout: timeOut,
 	}
 
-	if db, err := bolt.Open(path, fileMode, opts); err != nil {
+	if store, err := bolt.Open(path, fileMode, opts); err != nil {
+		log.Print(err)
 		return nil, err
 	} else {
-		err := db.Update(func(tx *bolt.Tx) error {
+		err := store.Update(func(tx *bolt.Tx) error {
 			_, err := tx.CreateBucketIfNotExists(bucketName)
 			return err
 		})
 
 		if err != nil {
+			log.Print(err)
 			return nil, err
 		} else {
-			return &KVStore{db: db}, nil
+			log.Print("created store")
+			return &KVStore{db: store}, nil
 		}
 	}
 }
@@ -94,6 +97,7 @@ func (kvs *KVStore) Put(key string, value interface{}) error {
 	}
 
 	return kvs.db.Update(func(tx *bolt.Tx) error {
+		log.Printf("PUT: key=%s, value=%s", key, value)
 		return tx.Bucket(bucketName).Put([]byte(key), buf.Bytes())
 	})
 }
@@ -103,12 +107,15 @@ func (kvs *KVStore) Get(key string, value interface{}) error {
 		cursor := tx.Bucket(bucketName).Cursor()
 
 		if k, v := cursor.Seek([]byte(key)); k == nil || string(k) != key {
+			log.Print("GET: not found")
 			return ErrNotFound
 		} else if value == nil {
+			log.Print("GET: nil value")
 			return nil
 		} else {
+			log.Print("GET: getting value for key=", key)
 			decoder := gob.NewDecoder(bytes.NewReader(v))
-			return decoder.Decode(value)
+			return decoder.Decode(value);
 		}
 	})
 }
@@ -117,13 +124,16 @@ func (kvs *KVStore) Delete(key string) error {
 	return kvs.db.Update(func(tx *bolt.Tx) error {
 		cursor := tx.Bucket(bucketName).Cursor()
 		if k, _ := cursor.Seek([]byte(key)); k == nil || string(k) != key {
+			log.Print("DELETE: not found")
 			return ErrNotFound
 		} else {
+			log.Print("DELETE: deleting key=", key)
 			return cursor.Delete()
 		}
 	})
 }
 
 func (kvs *KVStore) Close() error {
+	log.Print("closing store")
 	return kvs.db.Close()
 }
